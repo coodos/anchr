@@ -108,6 +108,10 @@ export class WebSocketClient {
 
                 this.socket.on('webhook', (event: WebhookEvent) => {
                     logger.info(`Received webhook event: ${event.id}`);
+                    // Ensure timestamp is a Date object
+                    if (typeof event.timestamp === 'string') {
+                        event.timestamp = new Date(event.timestamp);
+                    }
                     if (this.eventCallback) {
                         this.eventCallback(event);
                     }

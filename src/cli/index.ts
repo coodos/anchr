@@ -51,16 +51,17 @@ class AnchrCLI {
     private setupCommands() {
         const program = new Command();
 
-            program
-      .name('anchr')
-      .description('Webhook event forwarding CLI tool')
-      .version('1.0.0');
+        program
+            .name('anchr')
+            .description('Webhook event forwarding CLI tool')
+            .version('1.0.0');
 
         program
             .command('subscribe')
             .description('Subscribe to webhook events and forward them to local endpoints')
             .requiredOption('-s, --server <url>', 'WebSocket server URL (e.g., http://localhost:3000)')
             .option('-f, --forward-to <endpoints...>', 'Local endpoints to forward events to')
+            .option('-e, --endpoints <endpoints...>', 'Specific webhook endpoints to subscribe to (e.g., /github, /stripe)')
             .option('-t, --timeout <ms>', 'Request timeout in milliseconds', '5000')
             .option('-r, --retries <number>', 'Max reconnection attempts', '5')
             .option('-i, --interval <ms>', 'Reconnection interval in milliseconds', '1000')
@@ -86,6 +87,7 @@ class AnchrCLI {
             const config: ClientConfig = {
                 serverUrl: options.server,
                 forwardEndpoints: options.forwardTo || [],
+                subscribeEndpoints: options.endpoints || [],
                 reconnectInterval: parseInt(options.interval),
                 maxRetries: parseInt(options.retries)
             };
@@ -95,7 +97,7 @@ class AnchrCLI {
 
             // Set up event handling
             this.client.setEventCallback(async (event: WebhookEvent) => {
-                await this.handleEvent(event);
+                await this.handleEvent(event, config.subscribeEndpoints);
             });
 
             this.client.setStatusCallback((status: ConnectionStatus) => {
@@ -109,7 +111,12 @@ class AnchrCLI {
 
             this.isRunning = true;
             console.log(chalk.green('\n✅ Successfully connected!'));
-            console.log(chalk.cyan(`📡 Listening for webhook events...`));
+
+            if (config.subscribeEndpoints && config.subscribeEndpoints.length > 0) {
+                console.log(chalk.cyan(`📡 Listening for webhook events on: ${config.subscribeEndpoints.join(', ')}`));
+            } else {
+                console.log(chalk.cyan(`📡 Listening for all webhook events...`));
+            }
 
             if (config.forwardEndpoints.length > 0) {
                 console.log(chalk.yellow(`📤 Forwarding to: ${config.forwardEndpoints.join(', ')}`));
@@ -118,6 +125,12 @@ class AnchrCLI {
             }
 
             console.log(chalk.gray('\nPress Ctrl+C to stop\n'));
+
+            // Show help for endpoint filtering
+            if (config.subscribeEndpoints && config.subscribeEndpoints.length > 0) {
+                console.log(chalk.blue('💡 Tip: Only events from the specified endpoints will be processed.'));
+                console.log(chalk.blue('   Use -e flag to change which endpoints to listen to.\n'));
+            }
 
             // Keep the process running
             process.on('SIGINT', () => {
@@ -137,7 +150,19 @@ class AnchrCLI {
         }
     }
 
-    private async handleEvent(event: WebhookEvent) {
+    private async handleEvent(event: WebhookEvent, subscribeEndpoints?: string[]) {
+        // Check if we should process this event based on endpoint filtering
+        if (subscribeEndpoints && subscribeEndpoints.length > 0) {
+            const shouldProcess = subscribeEndpoints.some(endpoint =>
+                event.endpoint === endpoint || event.endpoint.startsWith(endpoint)
+            );
+
+            if (!shouldProcess) {
+                // Skip this event as it doesn't match our endpoint filter
+                return;
+            }
+        }
+
         console.log(chalk.cyan(`\n📨 ${formatEvent(event)}`));
 
         if (this.forwarder && this.forwarder.getEndpoints().length > 0) {
@@ -215,5 +240,5 @@ class AnchrCLI {
 
 // Start CLI if this file is run directly
 if (require.main === module) {
-  new AnchrCLI();
+    new AnchrCLI();
 } 

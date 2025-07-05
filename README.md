@@ -97,6 +97,7 @@ anchr subscribe -s <server-url> [options]
 Options:
   -s, --server <url>           WebSocket server URL (required)
   -f, --forward-to <endpoints> Local endpoints to forward events to
+  -e, --endpoints <endpoints>  Specific webhook endpoints to subscribe to (e.g., /github, /stripe)
   -t, --timeout <ms>          Request timeout in milliseconds (default: 5000)
   -r, --retries <number>      Max reconnection attempts (default: 5)
   -i, --interval <ms>         Reconnection interval in milliseconds (default: 1000)
@@ -138,6 +139,24 @@ anchr subscribe -s http://your-vps-ip:3000 \
   -t 10000 \
   -r 10 \
   -i 2000
+```
+
+#### Endpoint Filtering
+```bash
+# Subscribe only to GitHub webhooks
+anchr subscribe -s http://your-vps-ip:3000 \
+  -e /github \
+  -f http://localhost:3000/github-webhook
+
+# Subscribe to multiple specific endpoints
+anchr subscribe -s http://your-vps-ip:3000 \
+  -e /github /stripe /slack \
+  -f http://localhost:3000/webhook
+
+# Subscribe to all endpoints starting with /api
+anchr subscribe -s http://your-vps-ip:3000 \
+  -e /api \
+  -f http://localhost:3000/api-webhook
 ```
 
 ## 🔧 Development
