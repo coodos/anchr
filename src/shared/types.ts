@@ -20,6 +20,7 @@ export interface ServerConfig {
 export interface ClientConfig {
     serverUrl: string;
     forwardEndpoints: string[];
+    subscribeEndpoints?: string[];
     filters?: EventFilter[];
     reconnectInterval?: number;
     maxRetries?: number;
